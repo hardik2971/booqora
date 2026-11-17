@@ -59,7 +59,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Deploy hosting + Firestore/Storage rules
+      - name: Deploy website (Firebase Hosting)
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
@@ -82,18 +82,24 @@ jobs:
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
           set +e
           npx --yes firebase-tools@15 deploy \
-            --only "hosting:platform,firestore:rules,storage" \
+            --only "hosting:platform" \
             --project booqora-infidec --non-interactive \
             --message "GitHub ${GITHUB_SHA::7}" 2>&1 | tee "$RUNNER_TEMP/deploy.log"
           status=${PIPESTATUS[0]}
-          rm -f "$RUNNER_TEMP/sa.json"
           if [ "$status" -ne 0 ]; then
+            rm -f "$RUNNER_TEMP/sa.json"
             # Surface the real error as annotations (visible on the run summary).
             grep -iE "error|denied|permission|not found|invalid|failed" "$RUNNER_TEMP/deploy.log" | tail -8 | while IFS= read -r line; do
               echo "::error::${line:0:400}"
             done
             exit "$status"
           fi
+          # Security rules: best effort. Needs the "Service Usage Consumer" role on the
+          # service account; the currently deployed rules stay active if this is skipped.
+          npx --yes firebase-tools@15 deploy --only "firestore:rules,storage" \
+            --project booqora-infidec --non-interactive \
+            || echo "::warning::Website deployed. Security rules were not redeployed by CI (grant the service account the Service Usage Consumer role to enable this)."
+          rm -f "$RUNNER_TEMP/sa.json"
 
   # Pull request → temporary preview URL (expires in 7 days), commented on the PR.
   deploy-preview:
