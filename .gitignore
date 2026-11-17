@@ -1,0 +1,17 @@
+# Never commit service-account credentials
+secret/
+*.json.key
+*firebase-adminsdk*.json
+*-firebase.json
+
+# Design reference screenshots (not needed to build the app)
+reference-image/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Firebase CLI local cache
+.firebase/

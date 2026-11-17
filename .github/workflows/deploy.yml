@@ -1,0 +1,100 @@
+name: Build & deploy Booqora
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: booqora_platform
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.41.4
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze (fails on errors and warnings)
+        run: flutter analyze --no-fatal-infos
+
+      - name: Build web (release)
+        run: flutter build web --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: booqora_platform/build/web
+          retention-days: 7
+
+  # Push to main → deploy to the live site + security rules.
+  deploy-live:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://booqora-platform.web.app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: booqora_platform/build/web
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Deploy hosting + Firestore/Storage rules
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Add the FIREBASE_SERVICE_ACCOUNT repository secret (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          echo "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          npx --yes firebase-tools@15 deploy \
+            --only "hosting:platform,firestore:rules,storage" \
+            --project booqora-infidec --non-interactive \
+            --message "GitHub ${GITHUB_SHA::7}"
+          rm -f "$RUNNER_TEMP/sa.json"
+
+  # Pull request → temporary preview URL (expires in 7 days), commented on the PR.
+  deploy-preview:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: booqora_platform/build/web
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: booqora-infidec
+          target: platform
+          entryPoint: booqora_platform
+          expires: 7d

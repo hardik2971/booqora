@@ -1,0 +1,120 @@
+rules_version = '2';
+
+// Booqora — multi-tenant security rules.
+// Tenant data lives under workspaces/{wid}/**; access requires a membership doc
+// at workspaces/{wid}/members/{uid}. The public storefront may read items that
+// are flagged showInStore and create "online" draft orders only.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function wsPath(wid) { return /databases/$(database)/documents/workspaces/$(wid); }
+    function memberPath(wid, u) { return /databases/$(database)/documents/workspaces/$(wid)/members/$(u); }
+    function isMember(wid) { return signedIn() && exists(memberPath(wid, uid())); }
+    // For writes: also true inside the batch that creates the membership.
+    function canWrite(wid) { return signedIn() && existsAfter(memberPath(wid, uid())); }
+    function role(wid) { return get(memberPath(wid, uid())).data.role; }
+    function isAdmin(wid) { return isMember(wid) && role(wid) in ['owner', 'admin']; }
+    function emailLower() { return request.auth.token.email.lower(); }
+
+    // ---------- Users ----------
+    match /users/{userId} {
+      allow read, create, update: if signedIn() && uid() == userId;
+      allow delete: if false;
+    }
+
+    // ---------- Public store directory ----------
+    match /publicStores/{slug} {
+      allow read: if true;
+      allow create: if signedIn()
+        && (isMember(request.resource.data.workspaceId)
+            || getAfter(wsPath(request.resource.data.workspaceId)).data.ownerId == uid());
+      allow update: if isMember(resource.data.workspaceId)
+        && request.resource.data.workspaceId == resource.data.workspaceId;
+      allow delete: if isAdmin(resource.data.workspaceId);
+    }
+
+    // ---------- Team invites (doc id = invitee email, lowercase) ----------
+    match /invites/{email} {
+      allow get: if signedIn() && (request.auth.token.email != null && emailLower() == email
+                                  || isMember(resource.data.workspaceId));
+      allow list: if signedIn() && isMember(resource.data.workspaceId);
+      allow create, update: if isAdmin(request.resource.data.workspaceId)
+        && request.resource.data.role in ['admin', 'member'];
+      allow delete: if signedIn() && ((request.auth.token.email != null && emailLower() == email)
+                                     || isAdmin(resource.data.workspaceId));
+    }
+
+    // ---------- Workspaces ----------
+    match /workspaces/{wid} {
+      allow create: if signedIn() && request.resource.data.ownerId == uid();
+      allow read: if isMember(wid);
+      allow update: if isMember(wid) && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isMember(wid) && resource.data.ownerId == uid();
+
+      match /members/{memberId} {
+        allow read: if isMember(wid) || (signedIn() && uid() == memberId);
+        // Owner bootstrap (same batch as the workspace) or accepting an invite.
+        allow create: if signedIn() && uid() == memberId && (
+          (getAfter(wsPath(wid)).data.ownerId == uid() && request.resource.data.role == 'owner')
+          || (request.auth.token.email != null
+              && exists(/databases/$(database)/documents/invites/$(emailLower()))
+              && get(/databases/$(database)/documents/invites/$(emailLower())).data.workspaceId == wid
+              && request.resource.data.role == get(/databases/$(database)/documents/invites/$(emailLower())).data.role)
+        );
+        allow update: if isAdmin(wid)
+          || (signedIn() && uid() == memberId
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'updatedAt']));
+        allow delete: if isAdmin(wid) && resource.data.role != 'owner';
+      }
+
+      // Storefront-readable catalog.
+      match /products/{id} {
+        allow read: if isMember(wid) || resource.data.showInStore == true;
+        allow write: if canWrite(wid);
+      }
+      match /collections/{id} {
+        allow read: if isMember(wid) || resource.data.showInStore == true;
+        allow write: if canWrite(wid);
+      }
+      match /bundles/{id} {
+        allow read: if isMember(wid) || resource.data.showInStore == true;
+        allow write: if canWrite(wid);
+      }
+
+      // Orders: staff full access; storefront visitors may create online draft requests.
+      match /orders/{id} {
+        allow read, update, delete: if isMember(wid);
+        allow create: if isMember(wid) || (
+          signedIn()
+          && get(wsPath(wid)).data.get('settings', {}).get('store', {}).get('enabled', true) != false
+          && request.resource.data.source == 'online'
+          && request.resource.data.status == 'draft'
+          && request.resource.data.paid == 0
+          && request.resource.data.number == null
+          && request.resource.data.customerName is string
+          && request.resource.data.customerName.size() > 0
+          && request.resource.data.customerName.size() < 200
+          && request.resource.data.customerEmail is string
+          && request.resource.data.customerEmail.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')
+          && request.resource.data.lines is list
+          && request.resource.data.lines.size() > 0
+          && request.resource.data.lines.size() <= 100
+          && request.resource.data.total is number
+          && request.resource.data.keys().hasOnly([
+               'source', 'status', 'paymentStatus', 'number', 'customerName', 'customerEmail',
+               'customerPhone', 'deliveryAddress', 'fulfillment', 'startsAt', 'stopsAt', 'lines',
+               'subtotal', 'discountTotal', 'taxTotal', 'total', 'deposit', 'paid', 'due',
+               'itemCount', 'note', 'tags', 'createdAt', 'updatedAt'])
+        );
+      }
+
+      // Everything else in the workspace: members only (members collection excluded).
+      match /{sub}/{id} {
+        allow read: if isMember(wid);
+        allow write: if canWrite(wid) && !(sub in ['members']);
+      }
+    }
+  }
+}
