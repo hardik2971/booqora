@@ -4,6 +4,7 @@ import '../../core/browser.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../data/db.dart';
+import '../../data/payments.dart';
 import '../../data/schema.dart';
 import '../../data/session.dart';
 import '../../widgets/common.dart';
@@ -432,25 +433,28 @@ class _EmailDialogState extends State<_EmailDialog> {
     }
     setState(() => _busy = true);
     try {
-      await Db.create(
-          C.emailLog,
-          {
-            'to': to,
-            'subject': _subject.text.trim(),
-            'body': _body.text,
-            'context': widget.emailContext,
-            'entityId': widget.entityId,
-            'status': 'queued',
-          },
-          label: _subject.text.trim());
-      Browser.openUrl('mailto:$to?subject=${Uri.encodeComponent(_subject.text.trim())}&body=${Uri.encodeComponent(_body.text)}');
+      // Sent server-side over SMTP; the function also writes the email log.
+      await Payments.sendEmail(
+        workspaceId: Db.wid,
+        to: to,
+        subject: _subject.text.trim(),
+        body: _body.text,
+        context: widget.emailContext,
+        entityId: widget.entityId,
+      );
       if (!mounted) return;
-      toast(context, 'Email ready in your mail app');
+      toast(context, 'Email sent to $to');
       Navigator.pop(context, true);
     } catch (e) {
-      if (mounted) {
-        toast(context, friendlyError(e), error: true);
-        setState(() => _busy = false);
+      if (!mounted) return;
+      setState(() => _busy = false);
+      final useMailApp = await confirmDialog(context,
+          title: "Email couldn't be sent",
+          message: '${friendlyError(e)}\n\nOpen it in your own mail app instead?',
+          confirmLabel: 'Open mail app');
+      if (useMailApp) {
+        Browser.openUrl('mailto:$to?subject=${Uri.encodeComponent(_subject.text.trim())}&body=${Uri.encodeComponent(_body.text)}');
+        if (mounted) Navigator.pop(context, true);
       }
     }
   }

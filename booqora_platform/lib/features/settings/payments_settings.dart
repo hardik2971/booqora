@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/format.dart';
 import '../../core/theme.dart';
+import '../../data/db.dart';
+import '../../data/payments.dart';
 import '../../data/session.dart';
 import '../../widgets/anim.dart';
 import '../../widgets/common.dart';
@@ -46,89 +48,36 @@ class _PaymentsSettingsState extends SettingsState<PaymentsSettings> {
     await Session.instance.markOnboarding('payments');
   }
 
+  /// Live provider status from the server (keys live in Secret Manager).
+  late final Future<PayConfig> _cfg = Payments.config(workspaceId: Db.wid);
+
   Map<String, dynamic> _p(String key) => v[key] is Map ? Map<String, dynamic>.from(v[key] as Map) : <String, dynamic>{};
 
-  Future<void> _connect(_Provider p) async {
-    final cur = _p(p.key);
-    final keyCtl = TextEditingController(text: cur['publicKey']?.toString() ?? '');
-    final emailCtl = TextEditingController(text: cur['accountEmail']?.toString() ?? '');
-    var mode = cur['mode']?.toString() ?? 'live';
-    final ok = await formDialog(
-      context: context,
-      title: 'Connect ${p.name}',
-      saveLabel: 'Connect',
-      width: 480,
-      onSave: () async {
-        final data = {
-          'connected': true,
-          'publicKey': keyCtl.text.trim(),
-          'accountEmail': emailCtl.text.trim(),
-          'mode': mode,
-          'connectedAt': DateTime.now().toIso8601String(),
-          'connectedBy': Session.instance.displayName,
-        };
-        await Session.instance.saveSettings('payments', {p.key: data});
-        await Session.instance.markOnboarding('payments');
-        v[p.key] = data;
-      },
-      body: (ctx, setS) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Field(label: p.keyLabel, controller: keyCtl, required: true, hint: p.keyHint, helper: 'Public identifier only — safe to store in the browser.'),
-        const SizedBox(height: 14),
-        Field(
-          label: 'Account email',
-          controller: emailCtl,
-          keyboardType: TextInputType.emailAddress,
-          validator: (x) => (x ?? '').trim().isNotEmpty && !(x ?? '').contains('@') ? 'Enter a valid email' : null,
-        ),
-        const SizedBox(height: 14),
-        DropdownX<String>(
-          label: 'Mode',
-          value: mode,
-          items: const {'live': 'Live', 'test': 'Test'},
-          onChanged: (x) => setS(() => mode = x ?? 'live'),
-        ),
-        const SizedBox(height: 14),
-        const InfoBanner(
-          'Never paste secret keys here. Secret keys and webhook signing secrets must be configured server-side by the Booqora team '
-          'before online payments can be captured.',
-          tone: Tone.warning,
-          icon: Icons.key_off_outlined,
-        ),
-      ]),
-    );
-    keyCtl.dispose();
-    emailCtl.dispose();
-    if (ok && mounted) {
-      setState(() {});
-      toast(context, '${p.name} details saved');
-    }
-  }
-
-  Future<void> _disconnect(_Provider p) async {
-    final ok = await confirmDialog(context,
-        title: 'Disconnect ${p.name}?',
-        message: 'Customers will no longer be offered ${p.name} at checkout. The stored details will be removed.',
-        confirmLabel: 'Disconnect',
-        danger: true);
-    if (!ok) return;
+  Future<void> _setEnabled(_Provider p, bool on) async {
     try {
-      final data = {'connected': false, 'publicKey': '', 'accountEmail': '', 'mode': 'live'};
+      final data = {..._p(p.key), 'enabled': on};
       await Session.instance.saveSettings('payments', {p.key: data});
+      if (on) await Session.instance.markOnboarding('payments');
       v[p.key] = data;
       if (mounted) {
         setState(() {});
-        toast(context, '${p.name} disconnected');
+        toast(context, on ? '${p.name} is now offered to customers' : '${p.name} turned off');
       }
     } catch (e) {
       if (mounted) toast(context, friendlyError(e), error: true);
     }
   }
 
-  Widget _providerCard(_Provider p, int i) {
-    final d = _p(p.key);
-    final connected = d['connected'] == true;
-    final key = d['publicKey']?.toString() ?? '';
-    final masked = key.length > 10 ? '${key.substring(0, 8)}…${key.substring(key.length - 4)}' : key;
+  Widget _providerCard(_Provider p, int i, PayConfig? cfg, Object? error) {
+    final s = cfg?.providers[p.key];
+    final enabled = _p(p.key)['enabled'] != false;
+    final (String pill, String label) = cfg == null
+        ? (error != null ? ('failed', 'Status unavailable') : ('scheduled', 'Checking…'))
+        : !(s?.configured ?? false)
+            ? ('inactive', 'Not configured')
+            : !enabled
+                ? ('inactive', 'Turned off')
+                : (s!.available ? ('active', s.mode == 'test' ? 'Connected · Test mode' : 'Connected · Live') : ('needs_attention', 'Needs attention'));
     return AppCard(
       padding: const EdgeInsets.all(18),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -144,36 +93,38 @@ class _PaymentsSettingsState extends SettingsState<PaymentsSettings> {
           ),
           const SizedBox(width: 12),
           Expanded(child: Text(p.name, style: Theme.of(context).textTheme.titleMedium)),
-          StatusPill(connected ? 'active' : 'inactive', label: connected ? 'Connected' : 'Not connected'),
+          if (cfg == null && error == null) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
         ]),
+        const SizedBox(height: 10),
+        StatusPill(pill, label: label),
         const SizedBox(height: 12),
         Text(p.description, style: const TextStyle(color: AppColors.inkSoft, height: 1.45, fontSize: 13.5)),
         const SizedBox(height: 6),
         Text(p.fees, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
-        if (connected) ...[
+        if (s != null && s.configured) ...[
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(10)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              _kv(p.keyLabel, masked.isEmpty ? '—' : masked),
-              if ((d['accountEmail'] ?? '').toString().isNotEmpty) _kv('Account', d['accountEmail'].toString()),
-              _kv('Mode', Fmt.label(d['mode']?.toString() ?? 'live')),
+              _kv('Mode', s.mode == 'test' ? 'Test (no real money)' : 'Live'),
+              _kv('Currency', s.currency),
+              _kv('Keys', 'Stored securely on server'),
             ]),
           ),
         ],
-        const SizedBox(height: 14),
-        Wrap(spacing: 8, runSpacing: 8, children: [
-          if (!connected)
-            FilledButton.icon(onPressed: () => _connect(p), icon: const Icon(Icons.link, size: 18), label: const Text('Connect'))
-          else ...[
-            OutlinedButton(onPressed: () => _connect(p), child: const Text('Edit details')),
-            TextButton(
-              style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-              onPressed: () => _disconnect(p),
-              child: const Text('Disconnect'),
-            ),
-          ],
+        if (s?.reason != null && (s?.configured ?? false) && enabled) ...[
+          const SizedBox(height: 10),
+          Text(s!.reason!, style: const TextStyle(color: AppColors.warning, fontSize: 12.5)),
+        ],
+        if (error != null) ...[
+          const SizedBox(height: 10),
+          Text(friendlyError(error), style: const TextStyle(color: AppColors.danger, fontSize: 12.5)),
+        ],
+        const SizedBox(height: 10),
+        Row(children: [
+          const Expanded(child: Text('Offer to customers', style: TextStyle(fontWeight: FontWeight.w600))),
+          Switch(value: enabled, onChanged: (s?.configured ?? false) ? (x) => _setEnabled(p, x) : null),
         ]),
       ]),
     ).enter(i);
@@ -230,19 +181,18 @@ class _PaymentsSettingsState extends SettingsState<PaymentsSettings> {
       subtitle: 'Connect online payment providers and set up the manual payment methods you accept.',
       children: [
         const InfoBanner(
-          'Provider connections store your public account identifiers only. Online card capture becomes active once the matching '
-          'secret keys are configured server-side by the Booqora team.',
+          'Online payments run through secure Booqora servers. Secret keys stay on the server and are never stored in the browser.',
           tone: Tone.brand,
           icon: Icons.verified_user_outlined,
         ).enter(0),
         const SizedBox(height: 20),
-        LayoutBuilder(builder: (context, c) {
+        FutureBuilder<PayConfig>(future: _cfg, builder: (context, snap) => LayoutBuilder(builder: (context, c) {
           final cols = c.maxWidth > 900 ? 3 : (c.maxWidth > 560 ? 2 : 1);
           final w = (c.maxWidth - (cols - 1) * 16) / cols;
           return Wrap(spacing: 16, runSpacing: 16, children: [
-            for (var i = 0; i < _providers.length; i++) SizedBox(width: w, child: HoverLift(child: _providerCard(_providers[i], i + 1))),
+            for (var i = 0; i < _providers.length; i++) SizedBox(width: w, child: HoverLift(child: _providerCard(_providers[i], i + 1, snap.data, snap.error))),
           ]);
-        }),
+        })),
         const SizedBox(height: 28),
         FormSection(
           index: 4,

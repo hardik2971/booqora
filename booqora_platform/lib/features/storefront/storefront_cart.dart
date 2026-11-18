@@ -10,6 +10,7 @@ import '../../widgets/common.dart';
 import '../../widgets/inputs.dart';
 import 'storefront_data.dart';
 import 'storefront_page.dart';
+import 'storefront_pay.dart';
 
 // ---------------- Cart drawer ----------------
 
@@ -487,6 +488,10 @@ class SuccessView extends StatelessWidget {
                 ],
               ]),
             ).enter(4),
+            if (o['orderId'] != null) ...[
+              const SizedBox(height: 16),
+              PayNowCard(data: data, order: o).enter(5),
+            ],
             const SizedBox(height: 24),
             FilledButton.icon(onPressed: onContinue, icon: const Icon(Icons.storefront_outlined, size: 18), label: const Text('Continue browsing')).enter(5),
           ]),

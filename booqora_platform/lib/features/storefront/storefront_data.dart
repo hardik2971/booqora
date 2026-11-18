@@ -273,8 +273,10 @@ class StoreData extends ChangeNotifier {
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
-    await _fs.collection('workspaces').doc(workspaceId).collection('orders').add(data);
+    final ref = await _fs.collection('workspaces').doc(workspaceId).collection('orders').add(data);
     lastOrder = {
+      'orderId': ref.id,
+      'workspaceId': workspaceId,
       'name': name,
       'email': email,
       'lines': lines,

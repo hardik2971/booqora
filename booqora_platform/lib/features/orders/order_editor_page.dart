@@ -15,6 +15,7 @@ import '../../widgets/common.dart';
 import '../../widgets/inputs.dart';
 import '../../widgets/page.dart';
 import '../../widgets/side_panel.dart';
+import 'online_payment_dialog.dart';
 import 'order_dialogs.dart';
 import 'order_shared.dart';
 
@@ -792,6 +793,22 @@ class _OrderEditorPageState extends State<OrderEditorPage> {
     }
   }
 
+  Future<void> _collectOnline() async {
+    final wasNew = widget.id == null;
+    final saved = await _ensureSaved();
+    if (saved == null || !mounted) return;
+    await showOnlinePaymentDialog(
+      context,
+      orderId: saved.$1,
+      orderLabel: _number > 0 ? '#$_number' : 'order',
+      due: OrderX.dueOf(_totals['total']!, _paid),
+      customerName: _customerName,
+      customerEmail: _customerEmail,
+      companyName: companyName,
+    );
+    if (wasNew && mounted) context.go('/orders/${saved.$1}');
+  }
+
   Future<void> _addPayment() async {
     final wasNew = widget.id == null;
     final saved = await _ensureSaved();
@@ -1522,6 +1539,14 @@ class _OrderEditorPageState extends State<OrderEditorPage> {
             ),
           const SizedBox(height: 10),
           OutlinedButton.icon(onPressed: _saving ? null : _addPayment, icon: const Icon(Icons.add, size: 18), label: const Text('Add payment')),
+          if (due > 0) ...[
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              onPressed: _saving ? null : _collectOnline,
+              icon: const Icon(Icons.bolt_rounded, size: 18),
+              label: const Text('Collect online payment'),
+            ),
+          ],
         ]),
       ).enter(1),
       PanelCard(

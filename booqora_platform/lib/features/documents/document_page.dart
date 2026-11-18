@@ -9,6 +9,7 @@ import '../../core/browser.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../data/db.dart';
+import '../../data/payments.dart';
 import '../../data/pricing.dart';
 import '../../data/schema.dart';
 import '../../widgets/anim.dart';
@@ -174,12 +175,23 @@ class _DocumentPageState extends State<DocumentPage> {
     await _update({'signature': {'name': name, 'signedAt': Timestamp.now()}}, 'Document signed');
   }
 
-  void _requestSignature() {
+  Future<void> _requestSignature() async {
     final to = _email;
     final subject = 'Signature requested: $_title $_number from $companyName';
     final body = 'Hi ${_doc!.s('customerName')},\n\nPlease review $_title $_number for order #${_doc!.i('orderNumber')} '
         'and reply to confirm your signature.\n\nKind regards,\n$companyName';
-    Browser.openUrl('mailto:$to?subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}');
+    if (!to.contains('@')) {
+      toast(context, 'Add an email address to the customer first', error: true);
+      return;
+    }
+    try {
+      await Payments.sendEmail(workspaceId: Db.wid, to: to, subject: subject, body: body, context: 'documents', entityId: _doc!.id);
+      if (mounted) toast(context, 'Signature request sent to $to');
+    } catch (e) {
+      if (!mounted) return;
+      toast(context, '${friendlyError(e)} — opening your mail app instead', error: true);
+      Browser.openUrl('mailto:$to?subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}');
+    }
   }
 
   Future<void> _recordPayment() async {

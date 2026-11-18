@@ -24,6 +24,7 @@ import '../features/inventory/product_new_page.dart';
 import '../features/online_store/online_store_page.dart';
 import '../features/orders/order_editor_page.dart';
 import '../features/orders/orders_page.dart';
+import '../features/payments/pay_return_page.dart';
 import '../features/profile/profile_page.dart';
 import '../features/reports/report_page.dart';
 import '../features/reports/reports_page.dart';
@@ -63,7 +64,7 @@ GoRouter buildRouter(Session session) => GoRouter(
       refreshListenable: session,
       redirect: (context, state) {
         final loc = state.matchedLocation;
-        if (loc.startsWith('/s/')) return null; // public storefront
+        if (loc.startsWith('/s/') || loc == '/pay/return') return null; // public storefront + payment return
         final from = state.uri.queryParameters['from'];
         if (!session.authResolved || (session.signedIn && session.loading)) {
           if (loc == '/loading') return null;
@@ -87,6 +88,7 @@ GoRouter buildRouter(Session session) => GoRouter(
         _r('/signup', (_) => const SignupPage()),
         _r('/forgot', (_) => const ForgotPasswordPage()),
         _r('/welcome', (_) => const WorkspaceOnboardingPage()),
+        _r('/pay/return', (s) => PayReturnPage(params: s.uri.queryParameters)),
         _r('/s/:slug', (s) => StorefrontPage(slug: s.pathParameters['slug']!)),
         _r('/s/:slug/p/:pid', (s) => StorefrontPage(slug: s.pathParameters['slug']!, productId: s.pathParameters['pid'])),
         ShellRoute(
