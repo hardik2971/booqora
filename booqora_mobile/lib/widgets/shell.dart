@@ -27,6 +27,20 @@ class AppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.paddingOf(context).bottom;
+    // Tab pages are light: force dark status-bar icons (the welcome flow uses light ones).
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+      child: _scaffold(context, bottom),
+    );
+  }
+
+  Widget _scaffold(BuildContext context, double bottom) {
     return Scaffold(
       extendBody: true,
       backgroundColor: AppColors.bg,
@@ -152,6 +166,7 @@ Future<void> showQuickActions(BuildContext context) {
         const Align(alignment: Alignment.centerLeft, child: Text('Create', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
         const SizedBox(height: 16),
         GridView.count(
+                  padding: EdgeInsets.zero,
           crossAxisCount: 3,
           shrinkWrap: true,
           mainAxisSpacing: 14,

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:booqora_mobile/data/db.dart';
 import 'package:booqora_mobile/data/pricing.dart';
 
 void main() {
@@ -25,5 +26,23 @@ void main() {
     expect(Pricing.paymentStatus(1000, 400), 'partially_paid');
     expect(Pricing.paymentStatus(1000, 1000), 'paid');
     expect(Pricing.paymentStatus(1000, 1200), 'overpaid');
+  });
+
+  test('late rentals keep holding stock until returned', () {
+    final now = DateTime.now();
+    final product = Doc('p1', {'quantity': 4});
+    final late = Doc('o1', {
+      'status': 'started',
+      'startsAt': now.subtract(const Duration(days: 3)),
+      'stopsAt': now.subtract(const Duration(hours: 5)), // overdue
+      'lines': [{'productId': 'p1', 'qty': 1}],
+    });
+    final returned = Doc('o2', {
+      'status': 'returned',
+      'startsAt': now.subtract(const Duration(days: 3)),
+      'stopsAt': now.add(const Duration(days: 1)),
+      'lines': [{'productId': 'p1', 'qty': 2}],
+    });
+    expect(Pricing.available(product, now, now.add(const Duration(hours: 1)), [late, returned], const []), 3);
   });
 }

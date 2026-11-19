@@ -130,6 +130,7 @@ class BookingIllustration extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.all(10),
                 child: GridView.count(
+                  padding: EdgeInsets.zero,
                   crossAxisCount: 7,
                   mainAxisSpacing: 5,
                   crossAxisSpacing: 5,
@@ -435,6 +436,7 @@ class StoreIllustration extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.all(10),
                 child: GridView.count(
+                  padding: EdgeInsets.zero,
                   crossAxisCount: 3,
                   mainAxisSpacing: 7,
                   crossAxisSpacing: 7,

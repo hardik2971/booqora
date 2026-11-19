@@ -122,8 +122,11 @@ class Pricing {
     var used = 0;
     for (final o in orders) {
       if (o.id == excludeOrderId || !holding.contains(o.s('status'))) continue;
-      final s = o.d('startsAt'), e = o.d('stopsAt');
+      final s = o.d('startsAt');
+      var e = o.d('stopsAt');
       if (s == null || e == null) continue;
+      // A late rental (picked up, not yet returned) keeps holding stock until it is returned.
+      if (o.s('status') == 'started' && e.isBefore(DateTime.now()) && e.isBefore(end)) e = end;
       if (!overlaps(start.subtract(bufAfter), end.add(bufBefore), s, e)) continue;
       for (final l in o.maps('lines')) {
         if (l['productId'] == product.id) used += ((l['qty'] as num?) ?? 0).toInt();

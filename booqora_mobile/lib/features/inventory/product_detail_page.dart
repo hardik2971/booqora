@@ -201,6 +201,7 @@ class _ProductViewState extends State<_ProductView> {
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         slivers: [
           SliverAppBar(
+            systemOverlayStyle: SystemUiOverlayStyle.light,
             pinned: true,
             stretch: true,
             expandedHeight: expanded,

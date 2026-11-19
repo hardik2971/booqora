@@ -1686,6 +1686,7 @@ class _OrderEditorPageState extends State<OrderEditorPage> {
           },
         ),
       GridView.count(
+                  padding: EdgeInsets.zero,
         crossAxisCount: 2,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),

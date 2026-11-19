@@ -205,7 +205,7 @@ Future<Uint8List> buildDocumentPdf(Doc d, Doc? order, {PdfPageFormat format = Pd
             ],
             border: null,
             headerStyle: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: brand, letterSpacing: 0.6),
-            headerDecoration: pw.BoxDecoration(color: PdfColor(brand.red, brand.green, brand.blue, 0.08)),
+            headerDecoration: pw.BoxDecoration(color: PdfColor(1 - (1 - brand.red) * 0.1, 1 - (1 - brand.green) * 0.1, 1 - (1 - brand.blue) * 0.1)),
             cellStyle: const pw.TextStyle(fontSize: 10),
             rowDecoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: line, width: 0.6))),
             columnWidths: {0: const pw.FixedColumnWidth(60), 1: const pw.FixedColumnWidth(40), 2: const pw.FlexColumnWidth()},
@@ -227,7 +227,7 @@ Future<Uint8List> buildDocumentPdf(Doc d, Doc? order, {PdfPageFormat format = Pd
             ],
             border: null,
             headerStyle: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: brand, letterSpacing: 0.6),
-            headerDecoration: pw.BoxDecoration(color: PdfColor(brand.red, brand.green, brand.blue, 0.08)),
+            headerDecoration: pw.BoxDecoration(color: PdfColor(1 - (1 - brand.red) * 0.1, 1 - (1 - brand.green) * 0.1, 1 - (1 - brand.blue) * 0.1)),
             cellStyle: const pw.TextStyle(fontSize: 10),
             rowDecoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: line, width: 0.6))),
             columnWidths: {

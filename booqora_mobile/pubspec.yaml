@@ -1,4 +1,4 @@
-name: booqora_mobile
+﻿name: booqora_mobile
 description: "Booqora - rental management on the go"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -117,8 +117,15 @@ flutter_native_splash:
   image: assets/brand/splash_mark.png
   android_12:
     color: "#1C0938"
-    image: assets/brand/splash_mark.png
+    image: assets/brand/splash_android12.png
+    icon_background_color: "#1C0938"
   ios: true
   android: true
   web: false
   fullscreen: false
+
+# path_provider_android 2.3.x uses package:jni, which fails to load android.content.Context
+# in release builds on Android 16; 2.2.x uses standard platform channels.
+dependency_overrides:
+  path_provider_android: 2.2.23
+
