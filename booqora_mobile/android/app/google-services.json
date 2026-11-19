@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "366716320328",
+    "project_id": "booqora-infidec",
+    "storage_bucket": "booqora-infidec.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:366716320328:android:283d56f92756710a2cb67d",
+        "android_client_info": {
+          "package_name": "io.booqora.booqora_mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "366716320328-pl0h3vkt3paiinngrle2iiact81vpmsv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCxM7wdnth7r8HC_2KiZHskiHk5FTpE1YA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "366716320328-pl0h3vkt3paiinngrle2iiact81vpmsv.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "366716320328-q4b7ul9a6jclb397f11onoeovs4afst5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "io.booqora.booqoraMobile"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

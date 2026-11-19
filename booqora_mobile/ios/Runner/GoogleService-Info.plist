@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>366716320328-q4b7ul9a6jclb397f11onoeovs4afst5.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.366716320328-q4b7ul9a6jclb397f11onoeovs4afst5</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCwIPTNJxJq4SDNEjS_imwAU4wCPB_vVWY</string>
+	<key>GCM_SENDER_ID</key>
+	<string>366716320328</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>io.booqora.booqoraMobile</string>
+	<key>PROJECT_ID</key>
+	<string>booqora-infidec</string>
+	<key>STORAGE_BUCKET</key>
+	<string>booqora-infidec.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:366716320328:ios:db0dd930e4ff895e2cb67d</string>
+</dict>
+</plist>

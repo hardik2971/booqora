@@ -19,3 +19,6 @@ Thumbs.db
 # Cloud Functions dependencies / local secrets
 booqora_platform/functions/node_modules/
 booqora_platform/functions/.secret.local
+
+# Built app packages
+release/
