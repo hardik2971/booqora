@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "booqora-infidec"
+  },
+  "targets": {
+    "booqora-infidec": {
+      "hosting": {
+        "website": ["booqora-infidec"]
+      }
+    }
+  }
+}
